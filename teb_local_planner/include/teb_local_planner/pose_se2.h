@@ -48,7 +48,7 @@
 
 #include <tf2/convert.h>
 #include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 namespace teb_local_planner
 {
@@ -279,7 +279,7 @@ public:
   void averageInPlace(const PoseSE2& pose1, const PoseSE2& pose2)
   {
     _position = (pose1._position + pose2._position)/2;
-    _theta = g2o::average_angle(pose1._theta, pose2._theta);
+    _theta = teb_local_planner::average_angle(pose1._theta, pose2._theta);
   }
   
   /**
@@ -292,7 +292,7 @@ public:
     */ 
   static PoseSE2 average(const PoseSE2& pose1, const PoseSE2& pose2)
   {
-    return PoseSE2( (pose1._position + pose2._position)/2 , g2o::average_angle(pose1._theta, pose2._theta) );
+    return PoseSE2( (pose1._position + pose2._position)/2 , teb_local_planner::average_angle(pose1._theta, pose2._theta) );
   }
   
   /**

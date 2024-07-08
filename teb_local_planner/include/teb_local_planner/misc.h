@@ -55,6 +55,36 @@ namespace teb_local_planner
 //! Symbols for left/none/right rotations      
 enum class RotType { left, none, right };
 
+/**
+ * sign function.
+ * @return the sign of x. +1 for x > 0, -1 for x < 0, 0 for x == 0
+ */
+template <typename T>
+inline int sign(T x)
+{
+  if (x > 0)
+    return 1;
+  else if (x < 0)
+    return -1;
+  else
+    return 0;
+}
+
+/**
+ * average two angles
+ */
+inline double average_angle(double theta1, double theta2)
+{
+  double x, y;
+
+  x = cos(theta1) + cos(theta2);
+  y = sin(theta1) + sin(theta2);
+  if(x == 0 && y == 0)
+    return 0;
+  else
+    return std::atan2(y, x);
+}
+
 /** 
  * @brief Check whether two variables (double) are close to each other
  * @param a the first value to compare

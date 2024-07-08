@@ -54,12 +54,12 @@
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 
-#include <nav2_core/exceptions.hpp>
+#include <nav2_core/controller_exceptions.hpp>
 #include <nav2_costmap_2d/footprint.hpp>
 #include <nav_2d_utils/tf_help.hpp>
 
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 using nav2_util::declare_parameter_if_not_declared;
 
@@ -155,7 +155,7 @@ void TebLocalPlannerROS::initialize(nav2_util::LifecycleNode::SharedPtr node)
     
     // Get footprint of the robot and minimum and maximum distance from the center of the robot to its footprint vertices.
     footprint_spec_ = costmap_ros_->getRobotFootprint();
-    nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);    
+    std::tie(robot_inscribed_radius_, robot_circumscribed_radius) = nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_);
 
     // Setup callback for changes to parameters.
     parameters_client_ = std::make_shared<rclcpp::AsyncParametersClient>(
@@ -205,8 +205,8 @@ void TebLocalPlannerROS::initialize(nav2_util::LifecycleNode::SharedPtr node)
 void TebLocalPlannerROS::configure(
     const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
     std::string name,
-    const std::shared_ptr<tf2_ros::Buffer> & tf,
-    const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> & costmap_ros) {
+    std::shared_ptr<tf2_ros::Buffer> tf,
+    std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros) {
   nh_ = parent;
 
   auto node = nh_.lock();
@@ -257,7 +257,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   // check if plugin initialized
   if(!initialized_)
   {
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("teb_local_planner has not been initialized, please call initialize() before using this planner")
     );
   }
@@ -297,7 +297,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   if (!transformGlobalPlan(global_plan_, robot_pose, *costmap_, global_frame_, cfg_->trajectory.max_global_plan_lookahead_dist,
                            transformed_plan, &goal_idx, &tf_plan_to_global))
   {
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("Could not transform the global plan to the frame of the controller")
     );
   }
@@ -312,7 +312,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   // Return false if the transformed global plan is empty
   if (transformed_plan.empty())
   {
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("Transformed plan is empty. Cannot determine a local plan.")
     );
   }
@@ -370,7 +370,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     time_last_infeasible_plan_ = clock_->now();
     last_cmd_ = cmd_vel.twist;
     
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("teb_local_planner was not able to obtain a local plan for the current setting.")
     );
   }
@@ -387,7 +387,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     ++no_infeasible_plans_; // increase number of infeasible solutions in a row
     time_last_infeasible_plan_ = clock_->now();
     last_cmd_ = cmd_vel.twist;
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("TebLocalPlannerROS: velocity command invalid (hasDiverged). Resetting planner...")
     );
   }
@@ -397,7 +397,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   {
     // Update footprint of the robot and minimum and maximum distance from the center of the robot to its footprint vertices.
     footprint_spec_ = costmap_ros_->getRobotFootprint();
-    nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
+    std::tie(robot_inscribed_radius_, robot_circumscribed_radius) = nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_);
   }
 
   bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses, cfg_->trajectory.feasibility_check_lookahead_distance);
@@ -412,7 +412,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     time_last_infeasible_plan_ = clock_->now();
     last_cmd_ = cmd_vel.twist;
     
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
     );
   }
@@ -425,7 +425,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     time_last_infeasible_plan_ = clock_->now();
     last_cmd_ = cmd_vel.twist;
     
-    throw nav2_core::PlannerException(
+    throw nav2_core::ControllerException(
       std::string("TebLocalPlannerROS: velocity command invalid. Resetting planner...")
     );
   }
@@ -449,7 +449,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
       ++no_infeasible_plans_; // increase number of infeasible solutions in a row
       time_last_infeasible_plan_ = clock_->now();
       
-      throw nav2_core::PlannerException(
+      throw nav2_core::ControllerException(
         std::string("TebLocalPlannerROS: Resulting steering angle is not finite. Resetting planner...")
       );
     }
@@ -947,7 +947,7 @@ double TebLocalPlannerROS::convertTransRotVelToSteeringAngle(double v, double om
   double radius = v/omega;
   
   if (fabs(radius) < min_turning_radius)
-    radius = double(g2o::sign(radius)) * min_turning_radius; 
+    radius = double(teb_local_planner::sign(radius)) * min_turning_radius; 
 
   return std::atan(wheelbase / radius);
 }

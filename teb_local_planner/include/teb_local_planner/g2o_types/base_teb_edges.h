@@ -53,7 +53,6 @@
 namespace teb_local_planner
 {
     
-    
 /**
  * @class BaseTebUnaryEdge
  * @brief Base edge connecting a single vertex in the TEB optimization problem
